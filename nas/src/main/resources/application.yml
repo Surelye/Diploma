@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: NetworkAttachedStorage
+
+  datasource:
+    url: jdbc:${DB_PROVIDER:mysql}://${DB_URI:localhost}:${DB_PORT:3306}/${DB_SCHEMA:nas_database}
+    username: user
+    password: password
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+

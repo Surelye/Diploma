@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8 # Use the official MySQL 8 image
+    restart: always # Automatically restart the container if it stops
+    environment:
+      MYSQL_ROOT_PASSWORD: root # Set the root password (**CHANGE THIS**)
+      MYSQL_DATABASE: nas_database # Create this database on startup (optional)
+      MYSQL_USER: user # Create this user on startup (optional)
+      MYSQL_PASSWORD: password # Password for the user (optional)
+    ports:
+      - "3306:3306" # Map port 3306 on the host to port 3306 in the container
+    volumes:
+      - mysql_data:/var/lib/mysql # Persistent storage for the database data
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data: # Named volume to persist data across container restarts
