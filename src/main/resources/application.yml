@@ -1,15 +1,46 @@
+server:
+  port: 8888
+  servlet:
+    context-path: /nas
+
 spring:
   application:
-    name: NetworkAttachedStorage
+    name: network-attached-storage
 
   datasource:
-    url: jdbc:${DB_PROVIDER:mysql}://${DB_URI:localhost}:${DB_PORT:3306}/${DB_SCHEMA:nas_database}
-    username: user
-    password: password
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_URI:localhost}:${DB_PORT:5432}/${DB_NAME:nas_database}?currentSchema=${DB_SCHEMA:nas}
+    username: ${DB_USERNAME:username}
+    password: ${DB_PASSWORD:password}
 
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, prometheus, info
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
 
+logging:
+  logback:
+    spring:
+      lokiUrl: ${LOKI_LOGGING_ENDPOINT_URL:http://localhost:3100/loki/api/v1/push}
+  level:
+    sgu:
+      borodin:
+        nas: INFO
+    org:
+      springframework:
+        web: DEBUG

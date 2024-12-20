@@ -1,21 +1,56 @@
 services:
-  mysql:
-    image: mysql:8 # Use the official MySQL 8 image
-    restart: always # Automatically restart the container if it stops
+  postgres:
+    container_name: postgres-nas
+    image: postgres
+    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root # Set the root password (**CHANGE THIS**)
-      MYSQL_DATABASE: nas_database # Create this database on startup (optional)
-      MYSQL_USER: user # Create this user on startup (optional)
-      MYSQL_PASSWORD: password # Password for the user (optional)
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nas_database
     ports:
-      - "3306:3306" # Map port 3306 on the host to port 3306 in the container
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql # Persistent storage for the database data
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - postgres_data:/var/lib/postgresql/data
+
+  prometheus:
+    container_name: prometheus-nas
+    image: prom/prometheus
+    command:
+      - --enable-feature=exemplar-storage
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    container_name: grafana-nas
+    image: grafana/grafana
+    volumes:
+      - ./observability/grafana:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    ports:
+      - "3000:3000"
+
+  tempo:
+    container_name: tempo-nas
+    image: grafana/tempo
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+      - "9411:9411"
+
+  loki:
+    container_name: loki-nas
+    image: grafana/loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    ports:
+      - "3100:3100"
 
 volumes:
-  mysql_data: # Named volume to persist data across container restarts
+  postgres_data:

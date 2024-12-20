@@ -1,5 +1,6 @@
 package sgu.borodin.nas.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import sgu.borodin.nas.dto.CurrentUser;
 import sgu.borodin.nas.dto.FileMetadata;
 import sgu.borodin.nas.dto.Filter;
 import sgu.borodin.nas.enums.Operation;
@@ -30,66 +32,78 @@ import java.util.stream.Stream;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FileOperationsService {
-    private static final Path UPLOAD_DIR = Path.of("C:\\Users\\sgnot\\uploads");
+    public static final String UPLOAD_DIR_TEMPLATE = System.getProperty("os.name").toLowerCase().contains("win")
+            ? "C:\\Users\\Artem_Borodin\\Pictures\\uploads\\%s"
+            : "/home/%s";
+
+    private final CurrentUser currentUser;
+
+//    private static final Path UPLOAD_DIR = Path.of("C:\\Users\\Artem_Borodin\\Pictures\\uploads");
 
     @Value("${spring.servlet.multipart.max-file-size}")
     private DataSize maxFileSize;
 
     public Resource download(String filename) {
-        File file = Paths.get(UPLOAD_DIR.toString(), filename).toFile();
-
-        if (!file.exists() || !file.isFile()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File " + filename + " not found");
+        if (filename.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filename should not be empty");
         }
 
-        log.info("Downloading file {}", file.getPath());
+        File file = Paths.get(currentUser.getUploadDirectory(), filename).toFile();
+
+        if (!file.exists() || !file.isFile()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File [" + filename + "] not found");
+        }
 
         return new FileSystemResource(file);
     }
 
-    public List<FileMetadata> list(String path, Map<String, String> requestParams) {
-        try {
-            Path directoryPath = Paths.get(UPLOAD_DIR.toString(), path);
+    public List<FileMetadata> list(String path, Map<String, String> requestParams) throws IOException {
+        Path directoryPath = Paths.get(currentUser.getUploadDirectory(), path);
 
-            if (!Files.exists(directoryPath) || !Files.isDirectory(directoryPath)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Directory " + path + " not found");
-            }
-
-            return getFilesMetadata(directoryPath, requestParams);
-        } catch (IOException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error listing files for directory " + path,
-                    e
-            );
+        if (!Files.exists(directoryPath)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Directory [" + path + "] not found");
         }
+
+        if (!Files.isDirectory(directoryPath)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Resource on path [" + directoryPath + "] is not a directory");
+        }
+
+        return getFilesMetadata(directoryPath, requestParams);
     }
 
-    public URI upload(MultipartFile file) throws IOException {
-        if (!Files.exists(UPLOAD_DIR)) {
-            Files.createDirectory(UPLOAD_DIR);
+    public URI upload(MultipartFile file, String path) throws IOException {
+        Path uploadDir = Paths.get(currentUser.getUploadDirectory(), path);
+
+        if (!Files.exists(uploadDir)) {
+            Files.createDirectory(uploadDir);
         }
 
         validateFile(file);
-        Path filePath = Paths.get(UPLOAD_DIR.toString(), file.getOriginalFilename());
+        Path filePath = Paths.get(uploadDir.toString(), file.getOriginalFilename());
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        log.info("File {} was successfully uploaded", file.getOriginalFilename());
+        log.info("File [{}] was successfully uploaded in {} for user [{}]",
+                file.getOriginalFilename(),
+                Objects.isNull(path) ? "default directory" : "directory [%s]".formatted(path),
+                currentUser.getUsername()
+        );
 
         return filePath.toUri();
     }
 
-    public URI move(String sourcePath, String destinationPath) {
+    public URI move(String sourcePath, String destinationPath) throws IOException {
         return performMoveOrCopyOperation(sourcePath, destinationPath, Operation.MOVE);
     }
 
-    public URI copy(String sourcePath, String destinationPath) {
+    public URI copy(String sourcePath, String destinationPath) throws IOException {
         return performMoveOrCopyOperation(sourcePath, destinationPath, Operation.COPY);
     }
 
     public void delete(String path) throws IOException {
-        Path filePath = Paths.get(UPLOAD_DIR.toString(), path);
+        Path filePath = Paths.get(currentUser.getUploadDirectory(), path);
 
         if (!Files.exists(filePath)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File or directory " + path + " not found");
@@ -97,14 +111,15 @@ public class FileOperationsService {
 
         if (Files.isDirectory(filePath)) {
             deleteDirectoryRecursively(filePath);
+            log.info("Deleted directory [{}]", path);
         } else {
             Files.delete(filePath);
-            log.info("Deleted file {}", filePath.getFileName());
+            log.info("Deleted file [{}]", path);
         }
     }
 
     public HttpHeaders getMetadata(String path) throws IOException {
-        File file = Paths.get(UPLOAD_DIR.toString(), path).toFile();
+        File file = Paths.get(currentUser.getUploadDirectory(), path).toFile();
 
         if (!file.exists() || file.isDirectory()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File " + path + " not found");
@@ -138,11 +153,10 @@ public class FileOperationsService {
                     }
                 }
 
-                String sort = requestParams.get("sort"), order = requestParams.get("order");
-
-                if (Objects.nonNull(sort) && Objects.nonNull(order)) {
-                    fileMetadataStream = fileMetadataStream.sorted(FileMetadata.getComparator(sort, Order.valueOf(order)));
-                }
+                fileMetadataStream = fileMetadataStream.sorted(FileMetadata.getComparator(
+                        requestParams.getOrDefault("sort", "lastModifiedDate"),
+                        Order.valueOf(requestParams.getOrDefault("order", "DESC"))
+                ));
             }
 
             return fileMetadataStream.toList();
@@ -153,30 +167,39 @@ public class FileOperationsService {
         try (Stream<Path> walk = Files.walk(directory)) {
             for (Path path : walk.sorted((p1, p2) -> -p1.compareTo(p2)).toList()) {
                 Files.delete(path);
-                log.info("Deleted {}", path);
             }
         }
     }
 
-    private URI performMoveOrCopyOperation(String sourcePath, String destinationPath, Operation operation) {
-        try {
-            Path source = Paths.get(UPLOAD_DIR.toString(), sourcePath);
-            Path destination = Paths.get(UPLOAD_DIR.toString(), destinationPath);
+    private URI performMoveOrCopyOperation(
+            String sourcePath,
+            String destinationPath,
+            Operation operation
+    ) throws IOException {
+        Path source = Paths.get(currentUser.getUploadDirectory(), sourcePath);
+        Path destination = Paths.get(currentUser.getUploadDirectory(), destinationPath);
 
-            if (!Files.exists(source)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Original file not found");
-            }
-
-            if (!Files.exists(destination.getParent())) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Target directory not found");
-            }
-
-            return (switch (operation) {
-                case MOVE -> Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
-                case COPY -> Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-            }).toUri();
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "File move error", e);
+        if (!Files.exists(source)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Could not [%s] original resource [%s] because it was not found".formatted(
+                            operation.getValue(), sourcePath
+                    )
+            );
         }
+
+        if (!Files.exists(destination.getParent())) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Could not [%s] original resource [%s] because target location not found".formatted(
+                            operation.getValue(), destinationPath
+                    )
+            );
+        }
+
+        return (switch (operation) {
+            case MOVE -> Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
+            case COPY -> Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+        }).toUri();
     }
 }
