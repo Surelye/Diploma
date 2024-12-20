@@ -13,6 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 @UtilityClass
 @Slf4j
 public class Extensions {
+    public static final String EMPTY_STRING = "";
 
     public static long getDirectorySize(Path directoryPath) throws IOException {
         final long[] totalSize = {0};
@@ -43,5 +44,11 @@ public class Extensions {
         });
 
         return totalSize[0];
+    }
+
+    public static <T> T ternary(boolean expression, T returnOnTrue, T returnOnFalse) {
+        return expression
+                ? returnOnTrue
+                : returnOnFalse;
     }
 }
