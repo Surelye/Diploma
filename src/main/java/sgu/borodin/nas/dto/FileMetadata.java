@@ -42,7 +42,7 @@ public class FileMetadata {
                     ? Extensions.getDirectorySize(path)
                     : Files.size(path);
         } catch (IOException e) {
-            throw new RuntimeException("Error getting metadata for file " + path.getFileName(), e);
+            throw new IllegalStateException("Error getting metadata for file " + path.getFileName(), e);
         }
     }
 

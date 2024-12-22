@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,7 +47,7 @@ public class FileOperationsController {
                 .body(resource);
     }
 
-    @GetMapping("/list/{*path}")
+    @GetMapping(value = "/list/{*path}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<FileMetadata>> listFiles(
             @PathVariable(required = false) String path,
             @RequestParam(required = false) Map<String, String> requestParams
@@ -60,8 +61,10 @@ public class FileOperationsController {
     }
 
     @PostMapping("/upload/{*path}")
-    public ResponseEntity<URI> uploadFile(@PathVariable(required = false) String path, @RequestParam MultipartFile file)
-            throws IOException {
+    public ResponseEntity<URI> uploadFile(
+            @PathVariable(required = false) String path,
+            @RequestParam MultipartFile file
+    ) throws IOException {
         log.info("Uploading file [{}] on {} for user [{}]",
                 file.getOriginalFilename(),
                 path.isBlank() ? "default directory" : "directory [%s]".formatted(path),

@@ -3,7 +3,12 @@ server:
   servlet:
     context-path: /nas
 
+frontend:
+  origin: ${FRONTEND_ORIGIN:localhost:5173}
+
 spring:
+  profiles:
+    active: dev
   application:
     name: network-attached-storage
 
