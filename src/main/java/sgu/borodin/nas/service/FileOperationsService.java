@@ -187,12 +187,7 @@ public class FileOperationsService {
         }
 
         if (!Files.exists(destination.getParent())) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Could not [%s] original resource [%s] because target location not found".formatted(
-                            operation.getValue(), destinationPath
-                    )
-            );
+            Files.createDirectory(destination.getParent());
         }
 
         Path newPath = switch (operation) {
