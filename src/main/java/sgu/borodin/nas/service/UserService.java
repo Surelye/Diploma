@@ -61,6 +61,13 @@ public class UserService {
             throw new UserAlreadyExistsException("User [" + username + "] already exists");
         }
 
+        try {
+            Files.createDirectory(Path.of(FileOperationsService.UPLOAD_DIR_TEMPLATE.formatted(username)));
+        } catch (IOException e) {
+            log.error("Failed to create base directory for user {}", username);
+            throw new IllegalStateException(e);
+        }
+
         User user = userDto.getUser();
 
         User createdUser = userRepository.save(user

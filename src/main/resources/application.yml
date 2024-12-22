@@ -2,6 +2,12 @@ server:
   port: 8888
   servlet:
     context-path: /nas
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore/${KEY_STORE:baeldung.p12}
+    key-store-password: ${KEY_STORE_PASSWORD:password}
+    key-alias: ${KEY_ALIAS:baeldung}
+    enabled: true
 
 frontend:
   origin: ${FRONTEND_ORIGIN:localhost:5173}
