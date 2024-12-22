@@ -32,7 +32,7 @@ public class Extensions {
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException e) {
-                log.warn("Failed to visit file {} during traversal of directory {}",
+                log.warn("Failed to visit file [{}] during traversal of directory [{}]",
                         file.getFileName(), directoryPath.getFileName(), e);
                 return FileVisitResult.CONTINUE;
             }

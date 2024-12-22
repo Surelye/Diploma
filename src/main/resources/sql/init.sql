@@ -4,6 +4,7 @@ CREATE TABLE nas."user" (
 	"password" varchar NOT NULL,
 	created_at timestamp NOT NULL,
 	last_modified_at timestamp NOT NULL,
+	notes text NULL,
 	CONSTRAINT user_pk PRIMARY KEY (id),
 	CONSTRAINT user_unique UNIQUE (username)
 );
@@ -17,13 +18,26 @@ CREATE TABLE nas."role" (
 	CONSTRAINT role_unique UNIQUE ("name")
 );
 
-CREATE TABLE nas.user_role_table (
+CREATE TABLE nas.user_role (
 	user_id bigint NULL,
 	role_id bigint NULL,
-	CONSTRAINT user_role_table_pk PRIMARY KEY (user_id,role_id),
-	CONSTRAINT user_role_table_user_fk FOREIGN KEY (user_id) REFERENCES nas."user"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	CONSTRAINT user_role_table_role_fk FOREIGN KEY (role_id) REFERENCES nas."role"(id) ON DELETE CASCADE ON UPDATE CASCADE
+	CONSTRAINT user_role_pk PRIMARY KEY (user_id,role_id),
+	CONSTRAINT user_role_user_fk FOREIGN KEY (user_id) REFERENCES nas."user"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT user_role_role_fk FOREIGN KEY (role_id) REFERENCES nas."role"(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+INSERT INTO nas."user" (username, "password", created_at, last_modified_at)
+VALUES ('admin', '$2a$10$2TBMxdPuoGfaN3WZQFoDVuM5xi8egcV/4XzzJVa34onasVJjsseSm', now(), now())
+
+INSERT INTO nas."user_role" (user_id, role_id)
+VALUES (
+    (SELECT id from nas."user" WHERE username = 'admin')
+    (SELECT id from nas."role" WHERE name = 'USER')
+)
+(
+    (SELECT id from nas."user" WHERE username = 'admin')
+    (SELECT id from nas."role" WHERE name = 'ADMIN')
+)
 
 CREATE OR REPLACE FUNCTION add_user_role()
 RETURNS TRIGGER AS $$

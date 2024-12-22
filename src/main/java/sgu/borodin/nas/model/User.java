@@ -31,7 +31,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @Setter
 @ToString
 @Accessors(chain = true)
-@JsonInclude(value = NON_NULL)
+@JsonInclude(NON_NULL)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +42,11 @@ public class User {
 
     @NotNull(message = "User field 'password' cannot be null")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
     private String password;
+
+    @ToString.Exclude
+    private String notes;
 
     @CreatedDate
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")

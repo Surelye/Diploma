@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 import sgu.borodin.nas.dto.ExecutionStatus;
+import sgu.borodin.nas.exception.PermissionDeniedException;
+import sgu.borodin.nas.exception.RoleNotFoundException;
 import sgu.borodin.nas.exception.UserAlreadyExistsException;
 import sgu.borodin.nas.exception.UserNotFoundException;
 
@@ -48,5 +50,29 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ExecutionStatus> handleUserNotFoundException(UserNotFoundException e) {
         log.error("Server encountered with UserNotFoundException : {}", e.getMessage(), e);
         return new ResponseEntity<>(new ExecutionStatus(e.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(RoleNotFoundException.class)
+    public ResponseEntity<ExecutionStatus> handleRoleNotFoundException(RoleNotFoundException e) {
+        log.error("Server encountered with RoleNotFoundException : {}", e.getMessage(), e);
+        return new ResponseEntity<>(new ExecutionStatus(e.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(PermissionDeniedException.class)
+    public ResponseEntity<ExecutionStatus> handlePermissionDeniedException(PermissionDeniedException e) {
+        log.error("Server encountered with PermissionDeniedException : {}", e.getMessage(), e);
+        return new ResponseEntity<>(new ExecutionStatus(e.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ExecutionStatus> handleIllegalStateException(IllegalStateException e) {
+        log.error("Server encountered with IllegalStateException : {}", e.getMessage(), e);
+        return new ResponseEntity<>(new ExecutionStatus(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ExecutionStatus> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.error("Server encountered with IllegalArgumentException : {}", e.getMessage(), e);
+        return new ResponseEntity<>(new ExecutionStatus(e.getMessage()), HttpStatus.BAD_REQUEST);
     }
 }

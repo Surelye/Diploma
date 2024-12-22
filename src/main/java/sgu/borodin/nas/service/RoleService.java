@@ -8,6 +8,7 @@ import sgu.borodin.nas.model.Role;
 import sgu.borodin.nas.repository.RoleRepository;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -25,5 +26,21 @@ public class RoleService {
         return roleRepository.save(role
                 .setCreatedAt(LocalDateTime.now())
                 .setLastModifiedAt(LocalDateTime.now()));
+    }
+
+    public Role updateRole(String originalName, Role role) {
+        Optional<Role> originalRoleOpt = roleRepository.findRoleByName(originalName);
+
+        if (originalRoleOpt.isEmpty()) {
+            throw new RoleNotFoundException("Role [" + originalName + "] not found");
+        }
+
+        return roleRepository.save(originalRoleOpt.get()
+                .setName(role.getName())
+                .setLastModifiedAt(LocalDateTime.now()));
+    }
+
+    public void deleteRole(String name) {
+        roleRepository.deleteRoleByName(name);
     }
 }

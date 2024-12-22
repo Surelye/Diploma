@@ -36,4 +36,9 @@ public class UserDto implements UserDetails {
     public String getUsername() {
         return user.getUsername();
     }
+
+    @Override
+    public String toString() {
+        return user.toString();
+    }
 }

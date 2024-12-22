@@ -40,8 +40,6 @@ public class FileOperationsService {
 
     private final CurrentUser currentUser;
 
-//    private static final Path UPLOAD_DIR = Path.of("C:\\Users\\Artem_Borodin\\Pictures\\uploads");
-
     @Value("${spring.servlet.multipart.max-file-size}")
     private DataSize maxFileSize;
 
@@ -50,7 +48,7 @@ public class FileOperationsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filename should not be empty");
         }
 
-        File file = Paths.get(currentUser.getUploadDirectory(), filename).toFile();
+        File file = Path.of(currentUser.getUploadDirectory(), filename).toFile();
 
         if (!file.exists() || !file.isFile()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File [" + filename + "] not found");
@@ -60,7 +58,7 @@ public class FileOperationsService {
     }
 
     public List<FileMetadata> list(String path, Map<String, String> requestParams) throws IOException {
-        Path directoryPath = Paths.get(currentUser.getUploadDirectory(), path);
+        Path directoryPath = Path.of(currentUser.getUploadDirectory(), path);
 
         if (!Files.exists(directoryPath)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Directory [" + path + "] not found");
@@ -75,7 +73,7 @@ public class FileOperationsService {
     }
 
     public URI upload(MultipartFile file, String path) throws IOException {
-        Path uploadDir = Paths.get(currentUser.getUploadDirectory(), path);
+        Path uploadDir = Path.of(currentUser.getUploadDirectory(), path);
 
         if (!Files.exists(uploadDir)) {
             Files.createDirectory(uploadDir);
@@ -103,7 +101,7 @@ public class FileOperationsService {
     }
 
     public void delete(String path) throws IOException {
-        Path filePath = Paths.get(currentUser.getUploadDirectory(), path);
+        Path filePath = Path.of(currentUser.getUploadDirectory(), path);
 
         if (!Files.exists(filePath)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File or directory " + path + " not found");
@@ -197,9 +195,11 @@ public class FileOperationsService {
             );
         }
 
-        return (switch (operation) {
+        Path newPath = switch (operation) {
             case MOVE -> Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
             case COPY -> Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-        }).toUri();
+        };
+
+        return newPath.toUri();
     }
 }
