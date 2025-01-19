@@ -1,0 +1,240 @@
+/* FileExplorer.css */
+
+.file-explorer {
+    position: relative;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.file-enumeration-inner-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px
+}
+
+h1 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+li:hover {
+    background-color: #e0f7fa;
+    transform: translateY(-2px);
+}
+
+.directory {
+    background-color: #e3f2fd;
+    border-left: 5px solid #2196f3;
+}
+
+.file {
+    background-color: #fff3cd;
+    border-left: 5px solid #ffc107;
+}
+
+.item-name {
+    font-weight: bold;
+    color: #333;
+    margin-left: 10px;
+    flex-grow: 1;
+}
+
+.item-details {
+    color: #666;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+.loading, .error {
+    text-align: center;
+    font-size: 18px;
+    color: #ff5722;
+    margin-top: 20px;
+}
+
+.logout-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.arrow-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.back-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.back-button:hover {
+    background-color: #0056b3;
+}
+
+.back-button:focus {
+    outline: none;
+}
+
+.select-all-button {
+    background-color: #007BFF;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-bottom: 10px;
+    transition: background-color 0.3s;
+}
+
+.add-folder-button-container {
+    display: flex;
+    align-items: center;
+}
+
+.folder-name-input {
+    max-width: 150px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-right: 10px;
+    flex: 1;
+}
+
+.add-folder-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+}
+
+
+.add-folder-button:hover {
+    background-color: #218838;
+}
+
+
+.select-all-button:hover {
+    background-color: #0056b3;
+}
+
+.add-folder-button:hover {
+    background-color: #218838;
+}
+
+.custom-checkbox {
+    width: 20px;
+    height: 20px;
+    accent-color: #007bff;
+    margin-right: 10px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.custom-checkbox:checked {
+    background-color: #007bff;
+}
+
+.custom-checkbox:checked::before {
+    content: "\2713";
+    display: block;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+}
+
+.browse-button {
+    display: inline-block;
+    padding: 10px 0 10px 10px;
+    width: 220px;
+    border: 2px solid #007BFF;
+    border-radius: 5px;
+    background-color: #007BFF;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.browse-button:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.browse-button:focus {
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.upload-arrow-button {
+    background: none;
+    border: none;
+    color: blue;
+    margin-left: 10px;
+    font-size: 30px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.upload-arrow-button:hover {
+    color: darkblue;
+}
+
+.deselect-button {
+    background: none;
+    border: none;
+    color: red;
+    margin-left: 5px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.deselect-button:hover {
+    color: darkred;
+}
