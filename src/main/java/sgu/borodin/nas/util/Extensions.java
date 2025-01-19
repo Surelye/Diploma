@@ -46,6 +46,16 @@ public class Extensions {
         return totalSize[0];
     }
 
+    public static String reducePath(String path) {
+        if (path == null) {
+            return null;
+        }
+
+        return path.trim().equals("/")
+                ? EMPTY_STRING
+                : path;
+    }
+
     public static <T> T ternary(boolean expression, T returnOnTrue, T returnOnFalse) {
         return expression
                 ? returnOnTrue

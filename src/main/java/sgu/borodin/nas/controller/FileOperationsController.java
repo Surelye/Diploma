@@ -2,8 +2,8 @@ package sgu.borodin.nas.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
@@ -11,19 +11,20 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import sgu.borodin.nas.dto.CurrentUser;
 import sgu.borodin.nas.dto.FileMetadata;
 import sgu.borodin.nas.service.FileOperationsService;
+import sgu.borodin.nas.util.ZipManager.ZipFile;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -37,14 +38,13 @@ public class FileOperationsController {
     private final CurrentUser currentUser;
 
     @GetMapping("/download/{*path}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable String path) throws IOException {
-        log.info("Downloading file [{}] for user [{}]", path, currentUser.getUsername());
-        Resource resource = fileOperationsService.download(path);
+    public ResponseEntity<?> downloadElements(@PathVariable String path, @RequestParam List<String> filePaths) throws IOException {
+        log.info("Downloading files [{}] at path [{}] for user [{}]", filePaths, path, currentUser.getUsername());
+        ZipFile zipFile = fileOperationsService.download(path, filePaths);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                .header(HttpHeaders.CONTENT_TYPE, Files.probeContentType(Path.of(path)))
-                .contentLength(resource.contentLength())
-                .body(resource);
+                .header(HttpHeaders.CONTENT_DISPOSITION, zipFile.path())
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(zipFile.content().length))
+                .body(zipFile.content());
     }
 
     @GetMapping(value = "/list/{*path}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -61,16 +61,14 @@ public class FileOperationsController {
     }
 
     @PostMapping("/upload/{*path}")
-    public ResponseEntity<URI> uploadFile(
+    public ResponseEntity<List<URI>> uploadFiles(
             @PathVariable(required = false) String path,
-            @RequestParam MultipartFile file
+            @RequestParam List<MultipartFile> files
     ) throws IOException {
-        log.info("Uploading file [{}] on {} for user [{}]",
-                file.getOriginalFilename(),
-                path.isBlank() ? "default directory" : "directory [%s]".formatted(path),
-                currentUser.getUsername()
+        log.info("Uploading files [{}] on directory [{}] for user [{}]",
+                files.stream().map(MultipartFile::getOriginalFilename).toList(), path, currentUser.getUsername()
         );
-        return ResponseEntity.created(fileOperationsService.upload(file, path)).build();
+        return ResponseEntity.created(fileOperationsService.upload(path, files)).build();
     }
 
     @PostMapping("/move")
@@ -89,10 +87,21 @@ public class FileOperationsController {
         return ResponseEntity.created(fileOperationsService.copy(sourcePath, destinationPath)).build();
     }
 
+    @PostMapping("/folder/{*path}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void createFolder(
+            @PathVariable(required = false) String path,
+            @RequestParam String folderName
+    ) throws IOException {
+        log.info("Creating a folder [{}] for user [{}] at [{}]", folderName, currentUser.getUsername(), path);
+        fileOperationsService.createFolder(path, folderName);
+    }
+
     @DeleteMapping("/delete/{*path}")
-    public ResponseEntity<Void> deleteFileOrDirectory(@PathVariable String path) throws IOException {
-        log.info("Deleting resource [{}] for user [{}]", path, currentUser.getUsername());
-        fileOperationsService.delete(path);
+    public ResponseEntity<Void> deleteElements(@PathVariable String path, @RequestBody List<String> elements)
+            throws IOException {
+        log.info("Deleting resources [{}] at location [{}] for user [{}]", elements, path, currentUser.getUsername());
+        fileOperationsService.delete(path, elements);
         return ResponseEntity.noContent().build();
     }
 
