@@ -3,8 +3,6 @@ package sgu.borodin.nas.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,6 +14,8 @@ import sgu.borodin.nas.dto.FileMetadata;
 import sgu.borodin.nas.dto.Filter;
 import sgu.borodin.nas.enums.Operation;
 import sgu.borodin.nas.enums.Order;
+import sgu.borodin.nas.util.ZipManager;
+import sgu.borodin.nas.util.ZipManager.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,9 +26,11 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import static sgu.borodin.nas.util.Extensions.reducePath;
 
 @Service
 @Slf4j
@@ -38,23 +40,23 @@ public class FileOperationsService {
             ? "C:\\Users\\Artem_Borodin\\Pictures\\uploads\\%s"
             : "/home/%s";
 
+    private final ZipManager zipManager;
     private final CurrentUser currentUser;
 
     @Value("${spring.servlet.multipart.max-file-size}")
     private DataSize maxFileSize;
 
-    public Resource download(String filename) {
-        if (filename.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filename should not be empty");
-        }
+    public ZipFile download(String path, List<String> elements) throws IOException {
+        String reducedPath = reducePath(path);
+        String archiveName = UUID.randomUUID().toString();
+        File zipFile = Path.of(currentUser.getUploadDirectory(), reducedPath, archiveName + ".zip").toFile();
 
-        File file = Path.of(currentUser.getUploadDirectory(), filename).toFile();
+        zipManager.createZipFile(Path.of(currentUser.getUploadDirectory(), reducedPath).toString(), zipFile, elements);
+        ZipFile zipToReturn = new ZipFile(zipFile.toString(), Files.readAllBytes(zipFile.toPath()));
 
-        if (!file.exists() || !file.isFile()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File [" + filename + "] not found");
-        }
+        Files.delete(zipFile.toPath());
 
-        return new FileSystemResource(file);
+        return zipToReturn;
     }
 
     public List<FileMetadata> list(String path, Map<String, String> requestParams) throws IOException {
@@ -72,24 +74,25 @@ public class FileOperationsService {
         return getFilesMetadata(directoryPath, requestParams);
     }
 
-    public URI upload(MultipartFile file, String path) throws IOException {
-        Path uploadDir = Path.of(currentUser.getUploadDirectory(), path);
+    public URI upload(String path, List<MultipartFile> files) throws IOException {
+        String reducedPath = reducePath(path);
+        Path uploadDir = Path.of(currentUser.getUploadDirectory(), reducedPath);
 
         if (!Files.exists(uploadDir)) {
             Files.createDirectory(uploadDir);
         }
 
-        validateFile(file);
-        Path filePath = Paths.get(uploadDir.toString(), file.getOriginalFilename());
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        for (MultipartFile file : files) {
+            validateFile(file);
+            Path filePath = Paths.get(uploadDir.toString(), file.getOriginalFilename());
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        log.info("File [{}] was successfully uploaded in {} for user [{}]",
-                file.getOriginalFilename(),
-                Objects.isNull(path) ? "default directory" : "directory [%s]".formatted(path),
-                currentUser.getUsername()
-        );
+            log.info("File [{}] was successfully uploaded in [{}] for user [{}]",
+                    file.getOriginalFilename(), path, currentUser.getUsername()
+            );
+        }
 
-        return filePath.toUri();
+        return Path.of(path).toUri();
     }
 
     public URI move(String sourcePath, String destinationPath) throws IOException {
@@ -100,19 +103,33 @@ public class FileOperationsService {
         return performMoveOrCopyOperation(sourcePath, destinationPath, Operation.COPY);
     }
 
-    public void delete(String path) throws IOException {
-        Path filePath = Path.of(currentUser.getUploadDirectory(), path);
+    public void createFolder(String path, String folderName) throws IOException {
+        String reducedPath = reducePath(path);
+        Path newFolderLocation = Path.of(currentUser.getUploadDirectory(), reducedPath, folderName);
 
-        if (!Files.exists(filePath)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File or directory " + path + " not found");
+        if (!Files.exists(newFolderLocation)) {
+            Files.createDirectory(newFolderLocation);
+        }
+    }
+
+    public void delete(String path, List<String> elements) throws IOException {
+        String reducedPath = reducePath(path);
+        Path location = Path.of(currentUser.getUploadDirectory(), reducedPath);
+
+        if (!Files.exists(location)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File or directory [" + path + "] not found");
         }
 
-        if (Files.isDirectory(filePath)) {
-            deleteDirectoryRecursively(filePath);
-            log.info("Deleted directory [{}]", path);
-        } else {
-            Files.delete(filePath);
-            log.info("Deleted file [{}]", path);
+        for (String element : elements) {
+            Path elementFullPath = Path.of(location.toString(), element);
+            String elementPath = reducedPath + "/" + element;
+            if (Files.isDirectory(elementFullPath)) {
+                deleteDirectoryRecursively(elementFullPath);
+                log.info("Deleted directory [{}]", elementPath);
+            } else {
+                Files.delete(elementFullPath);
+                log.info("Deleted file [{}]", elementPath);
+            }
         }
     }
 
@@ -187,12 +204,7 @@ public class FileOperationsService {
         }
 
         if (!Files.exists(destination.getParent())) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Could not [%s] original resource [%s] because target location not found".formatted(
-                            operation.getValue(), destinationPath
-                    )
-            );
+            Files.createDirectory(destination.getParent());
         }
 
         Path newPath = switch (operation) {

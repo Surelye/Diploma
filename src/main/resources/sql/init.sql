@@ -44,16 +44,12 @@ RETURNS TRIGGER AS $$
 DECLARE
   role_id INTEGER;
 BEGIN
-  -- Retrieve the ID of the "USER" role.  Replace 'role_name' with the actual column name
-  -- where the role name is stored in your 'roles' table.
   SELECT id INTO role_id FROM nas."role" WHERE name = 'USER';
 
-  -- Check if the "USER" role exists.
   IF role_id IS NULL THEN
     RAISE EXCEPTION 'Role "USER" not found';
   END IF;
 
-  -- Insert a new row into the user_role table.
   INSERT INTO nas."user_role" (user_id, role_id)
   VALUES (NEW.id, role_id);
 
